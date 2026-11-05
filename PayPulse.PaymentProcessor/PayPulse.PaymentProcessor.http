@@ -1,0 +1,6 @@
+@PayPulse.PaymentProcessor_HostAddress = http://localhost:5124
+
+GET {{PayPulse.PaymentProcessor_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

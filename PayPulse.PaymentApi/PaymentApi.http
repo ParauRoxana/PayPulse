@@ -1,0 +1,8 @@
+@PaymentApi_Host = https://localhost:7216
+
+POST {{PaymentApi_Host}}/api/payments
+Content-Type: application/json
+
+{
+  "amount": 150
+}

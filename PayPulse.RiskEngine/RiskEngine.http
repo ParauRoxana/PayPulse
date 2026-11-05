@@ -1,0 +1,9 @@
+﻿@RiskEngine_Host = https://localhost:7073
+
+POST {{RiskEngine_Host}}/api/risk/evaluate
+Content-Type: application/json
+
+{
+  "paymentId": 95,
+  "amount": 150
+}

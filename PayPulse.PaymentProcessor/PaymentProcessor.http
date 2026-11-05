@@ -1,0 +1,9 @@
+@PaymentProcessor_Host = https://localhost:7035
+
+POST {{PaymentProcessor_Host}}/api/payments/process
+Content-Type: application/json
+
+{
+  "paymentId": 40,
+  "amount": 150
+}

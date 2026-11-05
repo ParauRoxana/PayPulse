@@ -1,0 +1,6 @@
+@PayPulse.RiskEngine_HostAddress = http://localhost:5187
+
+GET {{PayPulse.RiskEngine_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
