@@ -4,6 +4,6 @@ POST {{RiskEngine_Host}}/api/risk/evaluate
 Content-Type: application/json
 
 {
-  "paymentId": 95,
+  "paymentId": 12345,
   "amount": 150
 }

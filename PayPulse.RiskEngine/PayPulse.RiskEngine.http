@@ -1,6 +1,16 @@
-@PayPulse.RiskEngine_HostAddress = http://localhost:5187
+@PayPulse.RiskEngine_HostAddress = https://localhost:7073
 
-GET {{PayPulse.RiskEngine_HostAddress}}/weatherforecast/
+POST {{PayPulse.RiskEngine_HostAddress}}/api/risk/evaluate
+Content-Type: application/json
+
+{
+  "paymentId": 12345,
+  "amount": 150
+}
+
+###
+
+GET {{PayPulse.RiskEngine_HostAddress}}/health
 Accept: application/json
 
 ###

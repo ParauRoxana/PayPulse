@@ -1,0 +1,29 @@
+@PayPulse.TrafficApi_HostAddress = http://localhost:5090
+@runId = replace-with-run-id
+
+### Check TrafficApi health
+GET {{PayPulse.TrafficApi_HostAddress}}/health
+Accept: application/json
+
+### Get the active traffic run
+GET {{PayPulse.TrafficApi_HostAddress}}/api/traffic-runs/active
+Accept: application/json
+
+### Start a Black Friday traffic run
+# Copy the runId from the response and replace the value of @runId above.
+POST {{PayPulse.TrafficApi_HostAddress}}/api/traffic-runs
+Content-Type: application/json
+
+{
+  "durationSeconds": 60,
+  "requestsPerSecond": 20,
+  "concurrency": 20,
+  "amount": 150
+}
+
+### Get run statistics
+GET {{PayPulse.TrafficApi_HostAddress}}/api/traffic-runs/{{runId}}
+Accept: application/json
+
+### Stop the run
+POST {{PayPulse.TrafficApi_HostAddress}}/api/traffic-runs/{{runId}}/stop

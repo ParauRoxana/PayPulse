@@ -1,0 +1,188 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: riskengine
+  namespace: paypulse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: riskengine
+  template:
+    metadata:
+      labels:
+        app: riskengine
+    spec:
+      containers:
+        - name: riskengine
+          image: paypulse-risk-engine:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+            - name: CpuWorkload__DurationMilliseconds
+              value: "50"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paymentprocessor
+  namespace: paypulse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paymentprocessor
+  template:
+    metadata:
+      labels:
+        app: paymentprocessor
+    spec:
+      containers:
+        - name: paymentprocessor
+          image: paypulse-payment-processor:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paymentapi
+  namespace: paypulse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paymentapi
+  template:
+    metadata:
+      labels:
+        app: paymentapi
+    spec:
+      containers:
+        - name: paymentapi
+          image: paypulse-payment-api:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+            - name: ServiceUrls__RiskEngine
+              value: http://riskengine
+            - name: ServiceUrls__PaymentProcessor
+              value: http://paymentprocessor
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trafficapi
+  namespace: paypulse
+spec:
+  # Run state is stored in memory, so keep this control service at one replica.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trafficapi
+  template:
+    metadata:
+      labels:
+        app: trafficapi
+    spec:
+      containers:
+        - name: trafficapi
+          image: paypulse-traffic-api:local
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ASPNETCORE_HTTP_PORTS
+              value: "8080"
+            - name: Traffic__PaymentApiBaseUrl
+              value: http://paymentapi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2

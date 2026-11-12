@@ -2,4 +2,5 @@
   <Project Path="PayPulse.PaymentApi/PayPulse.PaymentApi.csproj" />
   <Project Path="PayPulse.PaymentProcessor/PayPulse.PaymentProcessor.csproj" />
   <Project Path="PayPulse.RiskEngine/PayPulse.RiskEngine.csproj" />
+  <Project Path="PayPulse.TrafficApi/PayPulse.TrafficApi.csproj" />
 </Solution>

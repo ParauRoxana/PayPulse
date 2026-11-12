@@ -1,6 +1,15 @@
-@PayPulse.PaymentApi_HostAddress = http://localhost:5079
+@PayPulse.PaymentApi_HostAddress = https://localhost:7216
 
-GET {{PayPulse.PaymentApi_HostAddress}}/weatherforecast/
+POST {{PayPulse.PaymentApi_HostAddress}}/api/payments
+Content-Type: application/json
+
+{
+  "amount": 150
+}
+
+###
+
+GET {{PayPulse.PaymentApi_HostAddress}}/health
 Accept: application/json
 
 ###
