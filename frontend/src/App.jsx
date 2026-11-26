@@ -3,6 +3,25 @@ import { useState, useEffect } from 'react'
 import './App.css'
 
 const STORAGE_KEY = 'paypulse-history'
+const PAYMENT_API_BASE_URL = import.meta.env.VITE_PAYMENT_API_BASE_URL || ''
+const TRAFFIC_API_BASE_URL = import.meta.env.VITE_TRAFFIC_API_BASE_URL || '/traffic-api'
+
+async function readApiError(response, fallback) {
+  const text = await response.text()
+  if (!text) return fallback
+  try {
+    const body = JSON.parse(text)
+    return body.detail || body.title || body.error || fallback
+  } catch {
+    return text
+  }
+}
+
+async function trafficRequest(path, options) {
+  const response = await fetch(`${TRAFFIC_API_BASE_URL}${path}`, options)
+  if (!response.ok) throw new Error(await readApiError(response, 'Traffic service request failed.'))
+  return response.status === 204 ? null : response.json()
+}
 
 // Payment status colors
 const COLORS = {
@@ -32,9 +51,51 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [simulationActive, setSimulationActive] = useState(false)
+  const [trafficRun, setTrafficRun] = useState(null)
+  const [trafficStats, setTrafficStats] = useState(null)
+  const [trafficBuckets, setTrafficBuckets] = useState(Array(12).fill(0))
+  const [trafficError, setTrafficError] = useState('')
 
-  // Placeholder until Black Friday backend integration.
-  const trafficBuckets = Array(12).fill(0)
+  useEffect(() => {
+    let cancelled = false
+    trafficRequest('/api/traffic-runs/active')
+      .then(run => {
+        if (!cancelled && run) {
+          setTrafficRun(run)
+          setTrafficStats(run.statistics)
+          setSimulationActive(true)
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    const runId = trafficRun?.runId
+    if (!runId) return undefined
+    let cancelled = false
+    let previousResponses = 0
+    const poll = async () => {
+      try {
+        const snapshot = await trafficRequest(`/api/traffic-runs/${runId}`)
+        if (cancelled || !snapshot) return
+        const responses = snapshot.statistics?.responses ?? 0
+        const delta = Math.max(0, responses - previousResponses)
+        previousResponses = responses
+        setTrafficStats(snapshot.statistics)
+        if (delta > 0) setTrafficBuckets(buckets => [...buckets.slice(1), delta])
+        if (!['running', 'stopping'].includes(snapshot.status)) setSimulationActive(false)
+      } catch (err) {
+        if (!cancelled) setTrafficError(err.message)
+      }
+    }
+    poll()
+    const timer = window.setInterval(poll, 1000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [trafficRun?.runId])
 
   // =====================================
   // LOCAL STORAGE
@@ -63,7 +124,7 @@ function App() {
     setPayment(null)
 
     try {
-      const response = await fetch('/api/payments', {
+      const response = await fetch(`${PAYMENT_API_BASE_URL}/api/payments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -71,9 +132,7 @@ function App() {
         body: JSON.stringify({ amount: value })
       })
 
-      if (!response.ok) {
-        throw new Error('Unable to process payment.')
-      }
+      if (!response.ok) throw new Error(await readApiError(response, 'Unable to process payment.'))
 
       const result = await response.json()
 
@@ -93,6 +152,35 @@ function App() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function startTraffic() {
+    setTrafficError('')
+    setTrafficStats(null)
+    setTrafficBuckets(Array(12).fill(0))
+    setSimulationActive(true)
+    try {
+      const run = await trafficRequest('/api/traffic-runs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durationSeconds: 60, requestsPerSecond: 20, concurrency: 20, amount: 150 })
+      })
+      setTrafficRun(run)
+      setSimulationActive(true)
+    } catch (err) {
+      setSimulationActive(false)
+      setTrafficError(err.message)
+    }
+  }
+
+  async function stopTraffic() {
+    if (!trafficRun?.runId) return
+    setTrafficError('')
+    try {
+      await trafficRequest(`/api/traffic-runs/${trafficRun.runId}/stop`, { method: 'POST' })
+    } catch (err) {
+      setTrafficError(err.message)
     }
   }
 
@@ -273,7 +361,7 @@ function App() {
                 rx="4"
                 fill="#2563eb"
               >
-                <title>{count} payments</title>
+                <title>{count} responses</title>
               </rect>
             )
           })}
@@ -286,7 +374,9 @@ function App() {
         </div>
 
         <p className="chart-note">
-          Waiting for traffic statistics...
+          {trafficStats
+            ? `${trafficStats.responses} responses · ${trafficStats.approved} approved · ${trafficStats.rejected} rejected · ${trafficStats.declined} declined`
+            : 'Requests per polling interval (about 1 second).'}
         </p>
       </div>
     )
@@ -346,7 +436,8 @@ function App() {
               className={`black-friday-button ${
                 simulationActive ? 'active' : ''
               }`}
-              onClick={() => setSimulationActive(true)}
+              onClick={startTraffic}
+              disabled={simulationActive}
             >
               Simulate Black Friday
             </button>
@@ -354,7 +445,7 @@ function App() {
             {simulationActive && (
               <button
                 className="stop-button"
-                onClick={() => setSimulationActive(false)}
+                onClick={stopTraffic}
               >
                 Stop
               </button>
@@ -458,6 +549,8 @@ function App() {
 
         </section>
 
+        {trafficError && <p className="error" role="alert">{trafficError}</p>}
+
         {/* STATISTICS */}
 
         <section className="metrics-grid">
@@ -502,7 +595,7 @@ function App() {
 
               <span className="small-label">
                 {simulationActive
-                  ? 'Transactions per 5 seconds'
+                  ? `${trafficRun?.requestsPerSecond ?? 20} requests/sec · ${trafficRun?.status ?? 'starting'}`
                   : 'Last 10 transactions'}
               </span>
 

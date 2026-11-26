@@ -134,6 +134,11 @@ h2 {
   background: #ea580c;
 }
 
+.black-friday-button:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
 .black-friday-button {
   background: #f97316; /* Orange - inactive */
 }
